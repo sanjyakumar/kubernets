@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-properties
+  namespace: develop
+data:
+  keycloak.conf: |

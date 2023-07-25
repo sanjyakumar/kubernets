@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: develop
+  labels: 
+    app.kubernetes.io/component: keycloak
+  annotations: 
+data:
+  KEYCLOAK_ADMIN: admin
+  KEYCLOAK_HTTP_PORT: '8080'
+  KEYCLOAK_PRODUCTION: 'false'
+  KEYCLOAK_ENABLE_HTTPS: 'false'
+  KEYCLOAK_LOG_OUTPUT: default
+  KC_LOG_LEVEL: INFO
+  KEYCLOAK_DATABASE_HOST: 'mypostgresql.cc4iqoikkjsk.ap-south-1.rds.amazonaws.com'
+  KEYCLOAK_DATABASE_NAME: 'keycloak'
+  KEYCLOAK_DATABASE_USER: 'postgres'
+  KEYCLOAK_DATABASE_PORT: '5432'

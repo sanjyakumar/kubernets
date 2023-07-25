@@ -1,0 +1,93 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: zookeeper
+  namespace: develop
+  labels:
+    app: zookeeper
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  replicas: 1
+  serviceName: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers: 
+      - name: zookeeper
+        image: bitnami/zookeeper:3.8.1-debian-11-r54
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: BITNAMI_DEBUG
+            value: "false"
+          - name: ZOO_PORT_NUMBER
+            value: "2181"
+          - name: ZOO_TICK_TIME
+            value: "2000"
+          - name: ZOO_INIT_LIMIT
+            value: "10"
+          - name: ZOO_SYNC_LIMIT
+            value: "5"
+          - name: ZOO_PRE_ALLOC_SIZE
+            value: "65536"
+          - name: ZOO_SNAPCOUNT
+            value: "100000"
+          - name: ZOO_MAX_CLIENT_CNXNS
+            value: "60"
+          - name: ZOO_4LW_COMMANDS_WHITELIST
+            value: srvr, mntr, ruok
+          - name: ZOO_LISTEN_ALLIPS_ENABLED
+            value: "true"
+          - name: ZOO_AUTOPURGE_INTERVAL
+            value: "0"
+          - name: ZOO_AUTOPURGE_RETAIN_COUNT
+            value: "3"
+          - name: ZOO_MAX_SESSION_TIMEOUT
+            value: "40000"
+          - name: ZOO_ENABLE_AUTH
+            value: "false"
+          - name: ALLOW_ANONYMOUS_LOGIN
+            value: "yes"
+          - name: ZOO_ENABLE_QUORUM_AUTH
+            value: "false"
+          - name: ZOO_HEAP_SIZE
+            value: "1024"
+          - name: ZOO_LOG_LEVEL
+            value: ERROR
+          - name: ZOO_SERVERS
+            value: zookeeper-0:2888:3888::1
+        ports:
+          - name: client
+            containerPort: 2181
+          - name: election
+            containerPort: 3888
+          - name: follower
+            containerPort: 2888
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts/setup.sh
+            subPath: setup.sh
+          - name: data
+            mountPath: /bitnami/zookeeper
+          - name: data-log
+            mountPath: /bitnami/zookeeper/dataLog
+      volumes:
+        - name: scripts
+          configMap:
+            name: zookeper-script
+            defaultMode: 0755
+        - name: data
+          emptyDir: {}
+        - name: data-log
+          emptyDir: {}

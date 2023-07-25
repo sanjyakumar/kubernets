@@ -1,0 +1,157 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc
+  namespace: develop
+provisioner: ebs.csi.aws.com
+allowedTopologies:
+- matchLabelExpressions:
+  - key: topology.ebs.csi.aws.com/zone
+    values:
+    - ap-south-1c
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-claim
+  namespace: develop
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: events
+  namespace: develop
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plugins
+  namespace: develop
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ebs-sc
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: axonserver-properties
+  namespace: develop
+data:
+  axonserver.properties: |
+     logging.file.max-history=10
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: axonserver
+  namespace: develop
+  labels:
+    app: axon
+spec:
+  serviceName: axonserver
+  replicas: 1
+  selector:
+    matchLabels:
+      app: axon
+  template:
+    metadata:
+      labels:
+        app: axon
+    spec:
+      securityContext:
+        runAsUser: 1001
+        fsGroup: 1001
+      terminationGracePeriodSeconds: 120
+      containers:
+      - name: axon
+        image: axoniq/axonserver:4.5.3 #latest-dev-nonroot
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+          requests:
+            cpu: "1"
+            memory: "500Mi"
+        ports:
+        - name: http
+          containerPort: 8024
+          protocol: TCP
+        - name: client-grpc
+          containerPort: 8124
+          protocol: TCP
+        env:
+        - name: AXONIQ_AXONSERVER_NAME
+          value: axonserver
+        - name: AXONIQ_AXONSERVER_HOSTNAME
+          value: axonserver
+        - name: AXONIQ_AXONSERVER_DEVMODE_ENABLED
+          value: "TRUE"
+        - name: AXONIQ_AXONSERVER_ACCESSCONTROL_ENABLED
+          value: "TRUE"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          readOnly: true
+        - name: data
+          mountPath: /data
+        - name: events
+          mountPath: /eventdata
+        - name: plugins
+          mountPath: /plugins
+        startupProbe:
+          httpGet:
+            path: /actuator/info
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+          failureThreshold: 110
+        readinessProbe:
+          httpGet:
+            path: /actuator/info
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 1
+          failureThreshold: 30
+        livenessProbe:
+          httpGet:
+            path: /actuator/info
+            port: 8024
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: axonserver-properties
+        - name: data
+          persistentVolumeClaim:
+            claimName: ebs-claim
+        - name: events
+          persistentVolumeClaim:
+            claimName: events
+        - name: plugins
+          persistentVolumeClaim:
+            claimName: plugins
